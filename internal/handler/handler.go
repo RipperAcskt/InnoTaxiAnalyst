@@ -51,7 +51,7 @@ func (h *Handler) GetOrdersAmount(ctx *fiber.Ctx) error {
 	}
 
 	var resp struct {
-		Amount int
+		Amount int `json:"amount"`
 	}
 	resp.Amount = num
 
