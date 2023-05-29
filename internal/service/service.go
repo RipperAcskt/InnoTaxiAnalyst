@@ -6,22 +6,23 @@ import (
 
 	"github.com/RipperAcskt/innotaxianalyst/config"
 	"github.com/RipperAcskt/innotaxianalyst/internal/client"
+	"github.com/google/uuid"
 )
 
 type Repo interface {
 }
 
-type OrderService interface {
+type GRPCService interface {
 	GetOrdersQuantity(ctx context.Context, analys client.AnalysType) (int, error)
+	GetJWT(ctx context.Context, id uuid.UUID) (*client.Token, error)
 }
-
 type Service struct {
 	repo   Repo
-	client OrderService
+	client GRPCService
 	cfg    *config.Config
 }
 
-func New(repo Repo, client OrderService, cfg *config.Config) *Service {
+func New(repo Repo, client GRPCService, cfg *config.Config) *Service {
 	return &Service{
 		repo:   repo,
 		client: client,

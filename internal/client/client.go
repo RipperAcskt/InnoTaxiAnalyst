@@ -7,6 +7,7 @@ import (
 
 	"github.com/RipperAcskt/innotaxi/pkg/proto"
 	"github.com/RipperAcskt/innotaxianalyst/config"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -19,9 +20,16 @@ const (
 )
 
 type User struct {
-	client proto.OrderServiceClient
-	conn   *grpc.ClientConn
-	cfg    *config.Config
+	clientOrder proto.OrderServiceClient
+	connOrder   *grpc.ClientConn
+	clientUser  proto.UserServiceClient
+	connUser    *grpc.ClientConn
+	cfg         *config.Config
+}
+
+type Token struct {
+	AccessToken  string `json:"Access_Token"`
+	RefreshToken string `json:"Refresh_Token"`
 }
 
 func New(cfg *config.Config) (*User, error) {
@@ -29,15 +37,24 @@ func New(cfg *config.Config) (*User, error) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 
-	conn, err := grpc.Dial(cfg.GRPC_ORDER_SERVICE_HOST, opts...)
-
+	connOrder, err := grpc.Dial(cfg.GRPC_ORDER_SERVICE_HOST, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("dial failed: %w", err)
+		return nil, fmt.Errorf("dial order failed: %w", err)
 	}
+	clientOrder := proto.NewOrderServiceClient(connOrder)
 
-	client := proto.NewOrderServiceClient(conn)
+	connUser, err := grpc.Dial(cfg.GRPC_USER_SERVICE_HOST, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("dial user failed: %w", err)
+	}
+	clientUser := proto.NewUserServiceClient(connUser)
 
-	return &User{client, conn, cfg}, nil
+	return &User{
+		clientOrder: clientOrder,
+		connOrder:   connOrder,
+		clientUser:  clientUser,
+		connUser:    connUser,
+		cfg:         cfg}, nil
 }
 
 func (u *User) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, error) {
@@ -54,13 +71,27 @@ func (u *User) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, e
 	request := &proto.Time{
 		TimeStarted: timeStr,
 	}
-	response, err := u.client.GetOrderQuantity(ctx, request)
+	response, err := u.clientOrder.GetOrderQuantity(ctx, request)
 	if err != nil {
 		return 0, fmt.Errorf("get order quantity failed: %w", err)
 	}
 	return int(response.NumberOfOrders), nil
 }
 
+func (u *User) GetJWT(ctx context.Context, id uuid.UUID) (*Token, error) {
+	request := &proto.Params{
+		Type: "analyst",
+	}
+	response, err := u.clientUser.GetJWT(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("get jwt failed: %w", err)
+	}
+	return &Token{response.AccessToken, response.RefreshToken}, nil
+}
+
 func (u *User) Close() error {
-	return u.conn.Close()
+	if err := u.connOrder.Close(); err != nil {
+		return err
+	}
+	return u.connUser.Close()
 }
