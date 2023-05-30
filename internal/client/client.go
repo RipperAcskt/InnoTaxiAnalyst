@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/RipperAcskt/innotaxi/pkg/proto"
@@ -20,11 +21,16 @@ const (
 )
 
 type User struct {
+	clientUser proto.UserServiceClient
+	connUser   *grpc.ClientConn
+
+	clientDriver proto.DriverServiceClient
+	connDriver   *grpc.ClientConn
+
 	clientOrder proto.OrderServiceClient
 	connOrder   *grpc.ClientConn
-	clientUser  proto.UserServiceClient
-	connUser    *grpc.ClientConn
-	cfg         *config.Config
+
+	cfg *config.Config
 }
 
 type Token struct {
@@ -32,16 +38,15 @@ type Token struct {
 	RefreshToken string `json:"Refresh_Token"`
 }
 
+type Rating struct {
+	ID     string `json:"ID"`
+	Rating string `json:"Rating"`
+}
+
 func New(cfg *config.Config) (*User, error) {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
-
-	connOrder, err := grpc.Dial(cfg.GRPC_ORDER_SERVICE_HOST, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("dial order failed: %w", err)
-	}
-	clientOrder := proto.NewOrderServiceClient(connOrder)
 
 	connUser, err := grpc.Dial(cfg.GRPC_USER_SERVICE_HOST, opts...)
 	if err != nil {
@@ -49,12 +54,29 @@ func New(cfg *config.Config) (*User, error) {
 	}
 	clientUser := proto.NewUserServiceClient(connUser)
 
+	connDriver, err := grpc.Dial(cfg.GRPC_DRIVER_SERVICE_HOST, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("dial user failed: %w", err)
+	}
+	clientDriver := proto.NewDriverServiceClient(connDriver)
+
+	connOrder, err := grpc.Dial(cfg.GRPC_ORDER_SERVICE_HOST, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("dial order failed: %w", err)
+	}
+	clientOrder := proto.NewOrderServiceClient(connOrder)
+
 	return &User{
+		clientUser: clientUser,
+		connUser:   connUser,
+
+		clientDriver: clientDriver,
+		connDriver:   connDriver,
+
 		clientOrder: clientOrder,
 		connOrder:   connOrder,
-		clientUser:  clientUser,
-		connUser:    connUser,
-		cfg:         cfg}, nil
+
+		cfg: cfg}, nil
 }
 
 func (u *User) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, error) {
@@ -89,9 +111,44 @@ func (u *User) GetJWT(ctx context.Context, id uuid.UUID) (*Token, error) {
 	return &Token{response.AccessToken, response.RefreshToken}, nil
 }
 
-func (u *User) Close() error {
-	if err := u.connOrder.Close(); err != nil {
-		return err
+func (u *User) GetUserRating(ctx context.Context) ([]Rating, error) {
+	responce, err := u.clientUser.GetRaiting(ctx, &proto.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("get user rating failed: %w", err)
 	}
-	return u.connUser.Close()
+
+	return u.formatRatingResponce(responce), nil
+}
+
+func (u *User) GetDriverRating(ctx context.Context) ([]Rating, error) {
+	responce, err := u.clientDriver.GetRaiting(ctx, &proto.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("get user rating failed: %w", err)
+	}
+
+	return u.formatRatingResponce(responce), nil
+}
+
+func (u *User) formatRatingResponce(responce *proto.RatingArray) []Rating {
+	var ratings []Rating
+	for _, r := range responce.Rating {
+		ratings = append(ratings, Rating{
+			ID:     r.ID,
+			Rating: strconv.FormatFloat(float64(r.Mark), 'f', 1, 32),
+		})
+	}
+	return ratings
+}
+
+func (u *User) Close() error {
+	if err := u.connUser.Close(); err != nil {
+		return fmt.Errorf("user's connection close failed: %w", err)
+	}
+	if err := u.connDriver.Close(); err != nil {
+		return fmt.Errorf("driver's connection close failed: %w", err)
+	}
+	if err := u.connOrder.Close(); err != nil {
+		return fmt.Errorf("orders's connection close failed: %w", err)
+	}
+	return nil
 }
