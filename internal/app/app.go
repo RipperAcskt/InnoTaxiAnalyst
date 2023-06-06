@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/RipperAcskt/innotaxianalyst/config"
+	"github.com/RipperAcskt/innotaxianalyst/internal/broker"
 	"github.com/RipperAcskt/innotaxianalyst/internal/client"
 	"github.com/RipperAcskt/innotaxianalyst/internal/handler"
 	"github.com/RipperAcskt/innotaxianalyst/internal/repo/clickhouse"
@@ -34,7 +35,17 @@ func Run() error {
 		return fmt.Errorf("client new failed: %w", err)
 	}
 
-	service := service.New(repo, client, cfg)
+	broker, err := broker.New(cfg)
+	if err != nil {
+		return fmt.Errorf("broker new failed: %w", err)
+	}
+
+	go func() {
+		err := <-broker.ErrChan
+		log.Error("error: ", zap.Error(err))
+	}()
+
+	service := service.New(repo, client, broker, cfg)
 
 	handler := handler.New(service, cfg, log)
 

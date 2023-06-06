@@ -23,6 +23,8 @@ type Config struct {
 	ADMIN_PASS  string `mapstructure:"ADMIN_PASS"`
 
 	HS256_SECRET string `mapstructure:"HS256_SECRET"`
+
+	BROKER_HOST string `mapstructure:"BROKER_HOST"`
 }
 
 func New() (*Config, error) {
