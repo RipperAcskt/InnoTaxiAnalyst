@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.9.1
-	github.com/RipperAcskt/innotaxi v0.0.0-20230607082003-f91e85fe39fc
+	github.com/RipperAcskt/innotaxi v0.0.0-20230607135234-63ea6ab028e6
 	github.com/gofiber/fiber/v2 v2.45.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.2
