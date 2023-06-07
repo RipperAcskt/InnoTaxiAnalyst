@@ -143,18 +143,20 @@ func (cl *ClickHouse) GetRating(ctx context.Context, db string) ([]model.Rating,
 	queryCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	rows, err := cl.db.QueryContext(queryCtx, "SELECT id, rating, FROM innotaxi.$1", db)
+	rows, err := cl.db.QueryContext(queryCtx, fmt.Sprintf("SELECT id, rating, FROM innotaxi.%s", db))
 	if err != nil {
 		return nil, fmt.Errorf("query row context failed: %w", err)
 	}
 
-	ratings := make([]model.Rating, 5, 10)
+	ratings := make([]model.Rating, 0, 10)
 	for rows.Next() {
 		var rating model.Rating
-		err := rows.Scan(&rating.ID, rating.Rating)
+		err := rows.Scan(&rating.ID, &rating.Rating)
 		if err != nil {
 			return nil, fmt.Errorf("scan failed: %w", err)
 		}
+
+		ratings = append(ratings, rating)
 	}
 
 	return ratings, nil
