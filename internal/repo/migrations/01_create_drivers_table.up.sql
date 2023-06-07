@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS innotaxi.drivers(
     name String,
     phone_number String,
     email String,
-    raiting Float64,
+    rating Float64,
+    num_of_marks Int64,
     taxi_type String,
 ) ENGINE = MergeTree() 
 PRIMARY KEY (id)

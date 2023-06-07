@@ -3,11 +3,11 @@ package client
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/RipperAcskt/innotaxi/pkg/proto"
 	"github.com/RipperAcskt/innotaxianalyst/config"
+	"github.com/RipperAcskt/innotaxianalyst/internal/model"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -36,11 +36,6 @@ type User struct {
 type Token struct {
 	AccessToken  string `json:"Access_Token"`
 	RefreshToken string `json:"Refresh_Token"`
-}
-
-type Rating struct {
-	ID     string `json:"ID"`
-	Rating string `json:"Rating"`
 }
 
 func New(cfg *config.Config) (*User, error) {
@@ -111,33 +106,22 @@ func (u *User) GetJWT(ctx context.Context, id uuid.UUID) (*Token, error) {
 	return &Token{response.AccessToken, response.RefreshToken}, nil
 }
 
-func (u *User) GetUserRating(ctx context.Context) ([]Rating, error) {
-	responce, err := u.clientUser.GetRaiting(ctx, &proto.Empty{})
-	if err != nil {
-		return nil, fmt.Errorf("get user rating failed: %w", err)
+func (u *User) SetRating(ctx context.Context, rating *proto.Rating) (*proto.Empty, error) {
+	switch rating.Type {
+	case model.DriverType.ToString():
+		_, err := u.clientUser.SetRating(ctx, rating)
+		if err != nil {
+			return nil, fmt.Errorf("set rating user failed: %w", err)
+		}
+
+	case model.UserType.ToString():
+		_, err := u.clientDriver.SetRating(ctx, rating)
+		if err != nil {
+			return nil, fmt.Errorf("set rating driver failed: %w", err)
+		}
 	}
 
-	return u.formatRatingResponce(responce), nil
-}
-
-func (u *User) GetDriverRating(ctx context.Context) ([]Rating, error) {
-	responce, err := u.clientDriver.GetRaiting(ctx, &proto.Empty{})
-	if err != nil {
-		return nil, fmt.Errorf("get user rating failed: %w", err)
-	}
-
-	return u.formatRatingResponce(responce), nil
-}
-
-func (u *User) formatRatingResponce(responce *proto.RatingArray) []Rating {
-	var ratings []Rating
-	for _, r := range responce.Rating {
-		ratings = append(ratings, Rating{
-			ID:     r.ID,
-			Rating: strconv.FormatFloat(float64(r.Mark), 'f', 1, 32),
-		})
-	}
-	return ratings
+	return &proto.Empty{}, nil
 }
 
 func (u *User) Close() error {

@@ -55,3 +55,9 @@ type Order struct {
 	Date         string
 	Status       string
 }
+
+type Rating struct {
+	Type   string  `json:"-"`
+	ID     string  `json:"ID"`
+	Rating float32 `json:"Rating"`
+}

@@ -56,7 +56,7 @@ func (cl *ClickHouse) WriteUser(user model.User) error {
 	queryCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := cl.db.ExecContext(queryCtx, "INSERT INTO innotaxi.users (id, user_id, name, phone_number, email, raiting) VALUES($1, $2, $3, $4, $5, $6)", user.ID, user.UserID, user.Name, user.PhoneNumber, user.Email, user.Raiting)
+	_, err := cl.db.ExecContext(queryCtx, "INSERT INTO innotaxi.users (id, user_id, name, phone_number, email, rating) VALUES($1, $2, $3, $4, $5, $6)", user.ID, user.UserID, user.Name, user.PhoneNumber, user.Email, user.Raiting)
 	if err != nil {
 		return fmt.Errorf("exec failed: %w", err)
 	}
@@ -67,7 +67,7 @@ func (cl *ClickHouse) WriteDriver(driver model.Driver) error {
 	queryCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := cl.db.ExecContext(queryCtx, "INSERT INTO innotaxi.drivers (id, driver_id, name, phone_number, email, raiting, taxi_type) VALUES($1, $2, $3, $4, $5, $6, $7)", driver.ID, driver.DriverID, driver.Name, driver.PhoneNumber, driver.Email, driver.Raiting, driver.TaxiType)
+	_, err := cl.db.ExecContext(queryCtx, "INSERT INTO innotaxi.drivers (id, driver_id, name, phone_number, email, rating, taxi_type) VALUES($1, $2, $3, $4, $5, $6, $7)", driver.ID, driver.DriverID, driver.Name, driver.PhoneNumber, driver.Email, driver.Raiting, driver.TaxiType)
 	if err != nil {
 		return fmt.Errorf("exec failed: %w", err)
 	}
@@ -85,4 +85,77 @@ func (cl *ClickHouse) WriteOrder(order model.Order) error {
 		return fmt.Errorf("exec failed: %w", err)
 	}
 	return nil
+}
+
+func (cl *ClickHouse) SetRatingUser(ctx context.Context, r model.Rating) (float64, error) {
+	queryCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	row := cl.db.QueryRowContext(queryCtx, "SELECT rating, num_of_marks FROM innotaxi.users WHERE user_id = $1", r.ID)
+	if row.Err() != nil {
+		return 0, fmt.Errorf("query row context failed: %w", row.Err())
+	}
+
+	var rating float64
+	var numOfMarks int64
+	err := row.Scan(&rating, &numOfMarks)
+	if err != nil {
+		return 0, fmt.Errorf("scan failed: %w", err)
+	}
+
+	numOfMarks++
+	rating += float64(r.Rating)
+
+	_, err = cl.db.ExecContext(queryCtx, "ALTER TABLE innotaxi.users UPDATE rating = $1, num_of_marks = $2 WHERE user_id = $3", rating, numOfMarks, r.ID)
+	if err != nil {
+		return 0, fmt.Errorf("exec failed: %w", err)
+	}
+	return rating / float64(numOfMarks), nil
+}
+
+func (cl *ClickHouse) SetRatingDriver(ctx context.Context, r model.Rating) (float64, error) {
+	queryCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	row := cl.db.QueryRowContext(queryCtx, "SELECT rating, num_of_marks FROM innotaxi.drivers WHERE driver_id = $1", r.ID)
+	if row.Err() != nil {
+		return 0, fmt.Errorf("query row context failed: %w", row.Err())
+	}
+
+	var rating float64
+	var numOfMarks int64
+	err := row.Scan(&rating, &numOfMarks)
+	if err != nil {
+		return 0, fmt.Errorf("scan failed: %w", err)
+	}
+
+	numOfMarks++
+	rating += float64(r.Rating)
+
+	_, err = cl.db.ExecContext(queryCtx, "ALTER TABLE innotaxi.drivers UPDATE rating = $1, num_of_marks = $2 WHERE driver_id = $3", rating, numOfMarks, r.ID)
+	if err != nil {
+		return 0, fmt.Errorf("exec failed: %w", err)
+	}
+	return rating / float64(numOfMarks), nil
+}
+
+func (cl *ClickHouse) GetRating(ctx context.Context, db string) ([]model.Rating, error) {
+	queryCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rows, err := cl.db.QueryContext(queryCtx, "SELECT id, rating, FROM innotaxi.$1", db)
+	if err != nil {
+		return nil, fmt.Errorf("query row context failed: %w", err)
+	}
+
+	ratings := make([]model.Rating, 5, 10)
+	for rows.Next() {
+		var rating model.Rating
+		err := rows.Scan(&rating.ID, rating.Rating)
+		if err != nil {
+			return nil, fmt.Errorf("scan failed: %w", err)
+		}
+	}
+
+	return ratings, nil
 }

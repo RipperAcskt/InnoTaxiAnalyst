@@ -85,7 +85,7 @@ func (h *Handler) GetRating(ctx *fiber.Ctx) error {
 	}
 
 	var resp struct {
-		Ratings []client.Rating `json:"ratings"`
+		Ratings []model.Rating `json:"ratings"`
 	}
 	resp.Ratings = ratings
 

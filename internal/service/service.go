@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/RipperAcskt/innotaxi/pkg/proto"
 	"github.com/RipperAcskt/innotaxianalyst/config"
 	"github.com/RipperAcskt/innotaxianalyst/internal/broker"
 	"github.com/RipperAcskt/innotaxianalyst/internal/client"
@@ -15,13 +16,15 @@ type Repo interface {
 	WriteUser(user model.User) error
 	WriteDriver(driver model.Driver) error
 	WriteOrder(order model.Order) error
+	SetRatingUser(ctx context.Context, r model.Rating) (float64, error)
+	SetRatingDriver(ctx context.Context, r model.Rating) (float64, error)
+	GetRating(ctx context.Context, db string) ([]model.Rating, error)
 }
 
 type GRPCService interface {
 	GetOrdersQuantity(ctx context.Context, analys client.AnalysType) (int, error)
 	GetJWT(ctx context.Context, id uuid.UUID) (*client.Token, error)
-	GetUserRating(ctx context.Context) ([]client.Rating, error)
-	GetDriverRating(ctx context.Context) ([]client.Rating, error)
+	SetRating(c context.Context, params *proto.Rating) (*proto.Empty, error)
 }
 type Service struct {
 	repo   Repo
@@ -49,16 +52,39 @@ func (s *Service) GetOrderAmount(ctx context.Context, analys client.AnalysType) 
 	return num, nil
 }
 
-func (s *Service) GetRating(ctx context.Context, ratingType string) ([]client.Rating, error) {
-	modelType := model.New(ratingType)
-	switch modelType {
-	case model.UserType:
-		return s.client.GetUserRating(ctx)
-	case model.DriverType:
-		return s.client.GetDriverRating(ctx)
-	default:
-		return nil, fmt.Errorf("unknown type")
+func (s *Service) SetRating(ctx context.Context, r model.Rating) error {
+	rating := &proto.Rating{
+		Type: r.Type,
+		ID:   r.ID,
 	}
+
+	switch r.Type {
+	case model.DriverType.ToString():
+		rate, err := s.repo.SetRatingUser(ctx, r)
+		if err != nil {
+			return fmt.Errorf("set rating user failed: %w", err)
+		}
+
+		rating.Mark = float32(rate)
+
+	case model.UserType.ToString():
+		rate, err := s.repo.SetRatingDriver(ctx, r)
+		if err != nil {
+			return fmt.Errorf("set rating driver failed: %w", err)
+		}
+
+		rating.Mark = float32(rate)
+	}
+
+	_, err := s.client.SetRating(ctx, rating)
+	if err != nil {
+		return fmt.Errorf("set rating failed: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) GetRating(ctx context.Context, ratingType string) ([]model.Rating, error) {
+	return s.repo.GetRating(ctx, ratingType)
 }
 
 func (s *Service) GetMessages() {
