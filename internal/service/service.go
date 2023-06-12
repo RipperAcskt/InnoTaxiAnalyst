@@ -12,6 +12,9 @@ import (
 	"github.com/google/uuid"
 )
 
+//go:generate mockgen -destination=mocks/mock_Repo.go -package=mocks github.com/RipperAcskt/innotaxianalyst/internal/service Repo
+//go:generate mockgen -destination=mocks/mock_grpc.go -package=mocks github.com/RipperAcskt/innotaxianalyst/internal/service GRPCService
+
 type Repo interface {
 	WriteUser(user model.User) error
 	WriteDriver(driver model.Driver) error
@@ -27,16 +30,16 @@ type GRPCService interface {
 	SetRating(c context.Context, params *proto.Rating) (*proto.Empty, error)
 }
 type Service struct {
-	repo   Repo
-	client GRPCService
+	Repo   Repo
+	Client GRPCService
 	broker *broker.Broker
 	cfg    *config.Config
 }
 
-func New(repo Repo, client GRPCService, broker *broker.Broker, cfg *config.Config) *Service {
+func New(Repo Repo, client GRPCService, broker *broker.Broker, cfg *config.Config) *Service {
 	s := Service{
-		repo:   repo,
-		client: client,
+		Repo:   Repo,
+		Client: client,
 		broker: broker,
 		cfg:    cfg,
 	}
@@ -45,7 +48,7 @@ func New(repo Repo, client GRPCService, broker *broker.Broker, cfg *config.Confi
 }
 
 func (s *Service) GetOrderAmount(ctx context.Context, analys client.AnalysType) (int, error) {
-	num, err := s.client.GetOrdersQuantity(ctx, analys)
+	num, err := s.Client.GetOrdersQuantity(ctx, analys)
 	if err != nil {
 		return 0, fmt.Errorf("get orders quantity failed: %w", err)
 	}
@@ -60,7 +63,7 @@ func (s *Service) SetRating(ctx context.Context, r model.Rating) error {
 
 	switch r.Type {
 	case model.DriverType.ToString():
-		rate, err := s.repo.SetRatingUser(ctx, r)
+		rate, err := s.Repo.SetRatingUser(ctx, r)
 		if err != nil {
 			return fmt.Errorf("set rating user failed: %w", err)
 		}
@@ -68,7 +71,7 @@ func (s *Service) SetRating(ctx context.Context, r model.Rating) error {
 		rating.Mark = float32(rate)
 
 	case model.UserType.ToString():
-		rate, err := s.repo.SetRatingDriver(ctx, r)
+		rate, err := s.Repo.SetRatingDriver(ctx, r)
 		if err != nil {
 			return fmt.Errorf("set rating driver failed: %w", err)
 		}
@@ -76,7 +79,7 @@ func (s *Service) SetRating(ctx context.Context, r model.Rating) error {
 		rating.Mark = float32(rate)
 	}
 
-	_, err := s.client.SetRating(ctx, rating)
+	_, err := s.Client.SetRating(ctx, rating)
 	if err != nil {
 		return fmt.Errorf("set rating failed: %w", err)
 	}
@@ -84,7 +87,7 @@ func (s *Service) SetRating(ctx context.Context, r model.Rating) error {
 }
 
 func (s *Service) GetRating(ctx context.Context, ratingType string) ([]model.Rating, error) {
-	return s.repo.GetRating(ctx, ratingType)
+	return s.Repo.GetRating(ctx, ratingType)
 }
 
 func (s *Service) GetMessages() {
@@ -101,7 +104,7 @@ func (s *Service) GetMessages() {
 			}
 			user.ID = uuid
 
-			err = s.repo.WriteUser(user)
+			err = s.Repo.WriteUser(user)
 			if err != nil {
 				fmt.Println(err)
 				s.broker.ErrChan <- fmt.Errorf("write user failed: %w", err)
@@ -116,7 +119,7 @@ func (s *Service) GetMessages() {
 			}
 			driver.ID = uuid
 
-			err = s.repo.WriteDriver(driver)
+			err = s.Repo.WriteDriver(driver)
 			if err != nil {
 				fmt.Println(err)
 				s.broker.ErrChan <- fmt.Errorf("write driver failed: %w", err)
@@ -131,7 +134,7 @@ func (s *Service) GetMessages() {
 			}
 			order.ID = uuid
 
-			err = s.repo.WriteOrder(order)
+			err = s.Repo.WriteOrder(order)
 			if err != nil {
 				fmt.Println(err)
 				s.broker.ErrChan <- fmt.Errorf("write order failed: %w", err)
