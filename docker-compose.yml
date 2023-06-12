@@ -1,0 +1,59 @@
+version: '3.9'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.2
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  broker:
+    image: confluentinc/cp-kafka:7.3.2
+    container_name: broker
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://broker:9092,OUTSIDE://localhost:9094
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 4
+    healthcheck:
+      test: nc -z localhost 9092 || exit -1
+      start_period: 30s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server
+    container_name: clickhouse
+    platform: linux/arm64/v8
+    ports:
+      - 8123:8123
+      - 9000:9000
+    volumes:
+      - /Users/ripper/ClickHouse/programs/server/users.xml:/etc/clickhouse-server/users.xml
+      - /Users/ripper/ClickHouse/programs/server/config.xml:/etc/clickhouse-server/config.xml
+      - /Users/ripper/ClickHouse/access:/var/lib/clickhouse/access
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/?query=SELECT%201 || exit 1
+  inno-taxi-analyst:
+    build: .
+    ports:
+      - "8083:8083"
+      - "5303:5303"
+    depends_on:
+      broker:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      
+
+
