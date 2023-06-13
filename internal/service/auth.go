@@ -26,7 +26,7 @@ func (s *Service) SingIn(ctx context.Context, info *SingIn) (*client.Token, erro
 	if info.Login != s.cfg.ADMIN_LOGIN || info.Password != s.cfg.ADMIN_PASS {
 		return nil, ErrIncorrectLoginOrPassword
 	}
-	return s.client.GetJWT(ctx, uuid.Nil)
+	return s.clientUser.GetJWT(ctx, uuid.Nil)
 }
 
 func Verify(token string, cfg *config.Config) error {
@@ -56,7 +56,7 @@ func Verify(token string, cfg *config.Config) error {
 }
 
 func (s *Service) Refresh(ctx context.Context) (*client.Token, error) {
-	token, err := s.client.GetJWT(ctx, uuid.Nil)
+	token, err := s.clientUser.GetJWT(ctx, uuid.Nil)
 	if err != nil {
 		return nil, fmt.Errorf("get jwt failed: %w", err)
 	}

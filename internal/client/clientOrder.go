@@ -7,7 +7,6 @@ import (
 
 	"github.com/RipperAcskt/innotaxi/pkg/proto"
 	"github.com/RipperAcskt/innotaxianalyst/config"
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -19,20 +18,14 @@ const (
 	month AnalysType = "month"
 )
 
-type User struct {
+type ClientOrder struct {
 	clientOrder proto.OrderServiceClient
 	connOrder   *grpc.ClientConn
-	clientUser  proto.UserServiceClient
-	connUser    *grpc.ClientConn
-	cfg         *config.Config
+
+	cfg *config.Config
 }
 
-type Token struct {
-	AccessToken  string `json:"Access_Token"`
-	RefreshToken string `json:"Refresh_Token"`
-}
-
-func New(cfg *config.Config) (*User, error) {
+func NewClientOrder(cfg *config.Config) (*ClientOrder, error) {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
@@ -43,21 +36,13 @@ func New(cfg *config.Config) (*User, error) {
 	}
 	clientOrder := proto.NewOrderServiceClient(connOrder)
 
-	connUser, err := grpc.Dial(cfg.GRPC_USER_SERVICE_HOST, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("dial user failed: %w", err)
-	}
-	clientUser := proto.NewUserServiceClient(connUser)
-
-	return &User{
+	return &ClientOrder{
 		clientOrder: clientOrder,
 		connOrder:   connOrder,
-		clientUser:  clientUser,
-		connUser:    connUser,
 		cfg:         cfg}, nil
 }
 
-func (u *User) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, error) {
+func (u *ClientOrder) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, error) {
 	var timeStr string
 	timeNow := time.Now()
 	if analys == day {
@@ -78,20 +63,6 @@ func (u *User) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, e
 	return int(response.NumberOfOrders), nil
 }
 
-func (u *User) GetJWT(ctx context.Context, id uuid.UUID) (*Token, error) {
-	request := &proto.Params{
-		Type: "analyst",
-	}
-	response, err := u.clientUser.GetJWT(ctx, request)
-	if err != nil {
-		return nil, fmt.Errorf("get jwt failed: %w", err)
-	}
-	return &Token{response.AccessToken, response.RefreshToken}, nil
-}
-
-func (u *User) Close() error {
-	if err := u.connOrder.Close(); err != nil {
-		return err
-	}
-	return u.connUser.Close()
+func (u *ClientOrder) Close() error {
+	return u.connOrder.Close()
 }
