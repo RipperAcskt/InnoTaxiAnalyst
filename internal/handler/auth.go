@@ -44,7 +44,7 @@ func (h *Handler) VerifyToken(args ...interface{}) fiber.Handler {
 		}
 		accessToken := token[1]
 
-		err := service.Verify(accessToken, h.cfg)
+		err := h.service.Verify(accessToken)
 		if err != nil {
 			if errors.Is(err, service.ErrTokenExpired) {
 				err := ErrResp{
@@ -80,7 +80,7 @@ func (h *Handler) Refresh(ctx *fiber.Ctx) error {
 		return ctx.SendString(fmt.Sprintf("body parse failed: %v", err))
 	}
 
-	err := service.Verify(token.RefreshToken, h.cfg)
+	err := h.service.Verify(token.RefreshToken)
 	if err != nil {
 		if err != nil {
 			if errors.Is(err, service.ErrTokenExpired) {
