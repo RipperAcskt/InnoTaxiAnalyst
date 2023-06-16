@@ -29,12 +29,17 @@ func Run() error {
 		return fmt.Errorf("clickhouse new failed: %w", err)
 	}
 
-	client, err := client.New(cfg)
+	clientUser, err := client.NewClientUser(cfg)
 	if err != nil {
-		return fmt.Errorf("client new failed: %w", err)
+		return fmt.Errorf("client user new failed: %w", err)
 	}
 
-	service := service.New(repo, client, cfg)
+	clientOrder, err := client.NewClientOrder(cfg)
+	if err != nil {
+		return fmt.Errorf("client user new failed: %w", err)
+	}
+
+	service := service.New(repo, clientUser, clientOrder, cfg)
 
 	handler := handler.New(service, cfg, log)
 

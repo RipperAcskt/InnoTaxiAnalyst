@@ -18,29 +18,31 @@ const (
 	month AnalysType = "month"
 )
 
-type User struct {
-	client proto.OrderServiceClient
-	conn   *grpc.ClientConn
-	cfg    *config.Config
+type ClientOrder struct {
+	clientOrder proto.OrderServiceClient
+	connOrder   *grpc.ClientConn
+
+	cfg *config.Config
 }
 
-func New(cfg *config.Config) (*User, error) {
+func NewClientOrder(cfg *config.Config) (*ClientOrder, error) {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 
-	conn, err := grpc.Dial(cfg.GRPC_ORDER_SERVICE_HOST, opts...)
-
+	connOrder, err := grpc.Dial(cfg.GRPC_ORDER_SERVICE_HOST, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("dial failed: %w", err)
+		return nil, fmt.Errorf("dial order failed: %w", err)
 	}
+	clientOrder := proto.NewOrderServiceClient(connOrder)
 
-	client := proto.NewOrderServiceClient(conn)
-
-	return &User{client, conn, cfg}, nil
+	return &ClientOrder{
+		clientOrder: clientOrder,
+		connOrder:   connOrder,
+		cfg:         cfg}, nil
 }
 
-func (u *User) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, error) {
+func (u *ClientOrder) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, error) {
 	var timeStr string
 	timeNow := time.Now()
 	if analys == day {
@@ -54,13 +56,13 @@ func (u *User) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, e
 	request := &proto.Time{
 		TimeStarted: timeStr,
 	}
-	response, err := u.client.GetOrderQuantity(ctx, request)
+	response, err := u.clientOrder.GetOrderQuantity(ctx, request)
 	if err != nil {
 		return 0, fmt.Errorf("get order quantity failed: %w", err)
 	}
 	return int(response.NumberOfOrders), nil
 }
 
-func (u *User) Close() error {
-	return u.conn.Close()
+func (u *ClientOrder) Close() error {
+	return u.connOrder.Close()
 }

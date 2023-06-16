@@ -18,6 +18,10 @@ type Handler struct {
 	log     *zap.Logger
 }
 
+type ErrResp struct {
+	Err string `json:"error"`
+}
+
 func New(s *service.Service, cfg *config.Config, log *zap.Logger) *Handler {
 	return &Handler{
 		service: s,
@@ -30,7 +34,10 @@ func (h *Handler) InitRouters() *fiber.App {
 	router := fiber.New()
 
 	analyst := router.Group("/analyst")
+	analyst.Post("/sing-in", h.SingIn)
+	analyst.Use(h.VerifyToken())
 	analyst.Post("/amount", h.GetOrdersAmount)
+	analyst.Post("/refresh", h.Refresh)
 
 	return router
 }
