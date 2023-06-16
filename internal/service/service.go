@@ -21,31 +21,42 @@ type Repo interface {
 	GetRating(ctx context.Context, db string) ([]model.Rating, error)
 }
 
-type GRPCService interface {
-	GetOrdersQuantity(ctx context.Context, analys client.AnalysType) (int, error)
+type UserService interface {
 	GetJWT(ctx context.Context, id uuid.UUID) (*client.Token, error)
 	SetRating(c context.Context, params *proto.Rating) (*proto.Empty, error)
 }
-type Service struct {
-	repo   Repo
-	client GRPCService
-	broker *broker.Broker
-	cfg    *config.Config
+
+type DriverService interface {
+	SetRating(c context.Context, params *proto.Rating) (*proto.Empty, error)
 }
 
-func New(repo Repo, client GRPCService, broker *broker.Broker, cfg *config.Config) *Service {
+type OrderService interface {
+	GetOrdersQuantity(ctx context.Context, analys client.AnalysType) (int, error)
+}
+type Service struct {
+	repo         Repo
+	clientUser   UserService
+	clientDriver DriverService
+	clientOrder  OrderService
+	broker       *broker.Broker
+	cfg          *config.Config
+}
+
+func New(repo Repo, clientUser UserService, clientDriver DriverService, clientOrder OrderService, broker *broker.Broker, cfg *config.Config) *Service {
 	s := Service{
-		repo:   repo,
-		client: client,
-		broker: broker,
-		cfg:    cfg,
+		repo:         repo,
+		clientUser:   clientUser,
+		clientDriver: clientDriver,
+		clientOrder:  clientOrder,
+		broker:       broker,
+		cfg:          cfg,
 	}
 	go s.GetMessages()
 	return &s
 }
 
 func (s *Service) GetOrderAmount(ctx context.Context, analys client.AnalysType) (int, error) {
-	num, err := s.client.GetOrdersQuantity(ctx, analys)
+	num, err := s.clientOrder.GetOrdersQuantity(ctx, analys)
 	if err != nil {
 		return 0, fmt.Errorf("get orders quantity failed: %w", err)
 	}
@@ -67,6 +78,11 @@ func (s *Service) SetRating(ctx context.Context, r model.Rating) error {
 
 		rating.Mark = float32(rate)
 
+		_, err = s.clientUser.SetRating(ctx, rating)
+		if err != nil {
+			return fmt.Errorf("set rating failed: %w", err)
+		}
+
 	case model.UserType.ToString():
 		rate, err := s.repo.SetRatingDriver(ctx, r)
 		if err != nil {
@@ -74,12 +90,13 @@ func (s *Service) SetRating(ctx context.Context, r model.Rating) error {
 		}
 
 		rating.Mark = float32(rate)
+
+		_, err = s.clientDriver.SetRating(ctx, rating)
+		if err != nil {
+			return fmt.Errorf("set rating failed: %w", err)
+		}
 	}
 
-	_, err := s.client.SetRating(ctx, rating)
-	if err != nil {
-		return fmt.Errorf("set rating failed: %w", err)
-	}
 	return nil
 }
 

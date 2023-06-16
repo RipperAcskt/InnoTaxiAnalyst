@@ -28,7 +28,7 @@ type infoStruct struct {
 
 func New(cfg *config.Config) (*Broker, error) {
 	userReaded := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:  []string{cfg.BROKER_HOST},
+		Brokers:  []string{cfg.KAFKA_HOST},
 		Topic:    model.UserType.ToString(),
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
@@ -36,7 +36,7 @@ func New(cfg *config.Config) (*Broker, error) {
 	userReaded.SetOffset(kafka.LastOffset)
 
 	driverReaded := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:  []string{cfg.BROKER_HOST},
+		Brokers:  []string{cfg.KAFKA_HOST},
 		Topic:    model.DriverType.ToString(),
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
@@ -44,7 +44,7 @@ func New(cfg *config.Config) (*Broker, error) {
 	driverReaded.SetOffset(kafka.LastOffset)
 
 	orderReaded := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:  []string{cfg.BROKER_HOST},
+		Brokers:  []string{cfg.KAFKA_HOST},
 		Topic:    model.OrderType.ToString(),
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
@@ -62,11 +62,11 @@ func New(cfg *config.Config) (*Broker, error) {
 		cfg: cfg,
 	}
 
-	b.Read()
+	b.ReadEvents()
 	return &b, nil
 }
 
-func (b *Broker) Read() {
+func (b *Broker) ReadEvents() {
 	go func() {
 		for {
 			message, err := b.userReaded.ReadMessage(context.Background())
