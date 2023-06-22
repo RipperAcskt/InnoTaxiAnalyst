@@ -33,7 +33,10 @@ func New(cfg *config.Config) (*Broker, error) {
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
 	})
-	userReaded.SetOffset(kafka.LastOffset)
+	err := userReaded.SetOffset(kafka.LastOffset)
+	if err != nil {
+		return nil, fmt.Errorf("user set offset failed: %w", err)
+	}
 
 	driverReaded := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{cfg.KAFKA_HOST},
@@ -41,7 +44,10 @@ func New(cfg *config.Config) (*Broker, error) {
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
 	})
-	driverReaded.SetOffset(kafka.LastOffset)
+	err = driverReaded.SetOffset(kafka.LastOffset)
+	if err != nil {
+		return nil, fmt.Errorf("driver set offset failed: %w", err)
+	}
 
 	orderReaded := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{cfg.KAFKA_HOST},
@@ -49,7 +55,10 @@ func New(cfg *config.Config) (*Broker, error) {
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
 	})
-	orderReaded.SetOffset(kafka.LastOffset)
+	err = orderReaded.SetOffset(kafka.LastOffset)
+	if err != nil {
+		return nil, fmt.Errorf("order set offset failed: %w", err)
+	}
 
 	b := Broker{
 		userReaded:   userReaded,
