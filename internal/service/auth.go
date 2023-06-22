@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/RipperAcskt/innotaxianalyst/config"
 	"github.com/RipperAcskt/innotaxianalyst/internal/client"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
@@ -29,11 +28,11 @@ func (s *Service) SingIn(ctx context.Context, info *SingIn) (*client.Token, erro
 	return s.clientUser.GetJWT(ctx, uuid.Nil)
 }
 
-func Verify(token string, cfg *config.Config) error {
+func (s *Service) Verify(token string) error {
 	tokenJwt, err := jwt.Parse(
 		token,
 		func(token *jwt.Token) (interface{}, error) {
-			return []byte(cfg.HS256_SECRET), nil
+			return []byte(s.cfg.HS256_SECRET), nil
 		},
 	)
 
