@@ -12,6 +12,11 @@ import (
 	"github.com/google/uuid"
 )
 
+//go:generate mockgen -destination=mocks/mock_Repo.go -package=mocks github.com/RipperAcskt/innotaxianalyst/internal/service Repo
+//go:generate mockgen -destination=mocks/mock_user.go -package=mocks github.com/RipperAcskt/innotaxianalyst/internal/service UserService
+//go:generate mockgen -destination=mocks/mock_driver.go -package=mocks github.com/RipperAcskt/innotaxianalyst/internal/service DriverService
+//go:generate mockgen -destination=mocks/mock_order.go -package=mocks github.com/RipperAcskt/innotaxianalyst/internal/service OrderService
+
 type Repo interface {
 	WriteUser(user model.User) error
 	WriteDriver(driver model.Driver) error
@@ -34,29 +39,29 @@ type OrderService interface {
 	GetOrdersQuantity(ctx context.Context, analys client.AnalysType) (int, error)
 }
 type Service struct {
-	repo         Repo
-	clientUser   UserService
-	clientDriver DriverService
-	clientOrder  OrderService
+	Repo         Repo
+	ClientUser   UserService
+	ClientDriver DriverService
+	ClientOrder  OrderService
 	broker       *broker.Broker
-	cfg          *config.Config
+	Cfg          *config.Config
 }
 
-func New(repo Repo, clientUser UserService, clientDriver DriverService, clientOrder OrderService, broker *broker.Broker, cfg *config.Config) *Service {
+func New(Repo Repo, ClientUser UserService, ClientDriver DriverService, ClientOrder OrderService, broker *broker.Broker, cfg *config.Config) *Service {
 	s := Service{
-		repo:         repo,
-		clientUser:   clientUser,
-		clientDriver: clientDriver,
-		clientOrder:  clientOrder,
+		Repo:         Repo,
+		ClientUser:   ClientUser,
+		ClientDriver: ClientDriver,
+		ClientOrder:  ClientOrder,
 		broker:       broker,
-		cfg:          cfg,
+		Cfg:          cfg,
 	}
 	go s.GetMessages()
 	return &s
 }
 
 func (s *Service) GetOrderAmount(ctx context.Context, analys client.AnalysType) (int, error) {
-	num, err := s.clientOrder.GetOrdersQuantity(ctx, analys)
+	num, err := s.ClientOrder.GetOrdersQuantity(ctx, analys)
 	if err != nil {
 		return 0, fmt.Errorf("get orders quantity failed: %w", err)
 	}
@@ -71,27 +76,27 @@ func (s *Service) SetRating(ctx context.Context, r model.Rating) error {
 
 	switch r.Type {
 	case model.DriverType.ToString():
-		rate, err := s.repo.SetRatingUser(ctx, r)
+		rate, err := s.Repo.SetRatingUser(ctx, r)
 		if err != nil {
 			return fmt.Errorf("set rating user failed: %w", err)
 		}
 
 		rating.Mark = float32(rate)
 
-		_, err = s.clientUser.SetRating(ctx, rating)
+		_, err = s.ClientUser.SetRating(ctx, rating)
 		if err != nil {
 			return fmt.Errorf("set rating failed: %w", err)
 		}
 
 	case model.UserType.ToString():
-		rate, err := s.repo.SetRatingDriver(ctx, r)
+		rate, err := s.Repo.SetRatingDriver(ctx, r)
 		if err != nil {
 			return fmt.Errorf("set rating driver failed: %w", err)
 		}
 
 		rating.Mark = float32(rate)
 
-		_, err = s.clientDriver.SetRating(ctx, rating)
+		_, err = s.ClientDriver.SetRating(ctx, rating)
 		if err != nil {
 			return fmt.Errorf("set rating failed: %w", err)
 		}
@@ -101,7 +106,7 @@ func (s *Service) SetRating(ctx context.Context, r model.Rating) error {
 }
 
 func (s *Service) GetRating(ctx context.Context, ratingType string) ([]model.Rating, error) {
-	return s.repo.GetRating(ctx, ratingType)
+	return s.Repo.GetRating(ctx, ratingType)
 }
 
 func (s *Service) GetMessages() {
@@ -118,7 +123,7 @@ func (s *Service) GetMessages() {
 			}
 			user.ID = uuid
 
-			err = s.repo.WriteUser(user)
+			err = s.Repo.WriteUser(user)
 			if err != nil {
 				fmt.Println(err)
 				s.broker.ErrChan <- fmt.Errorf("write user failed: %w", err)
@@ -133,7 +138,7 @@ func (s *Service) GetMessages() {
 			}
 			driver.ID = uuid
 
-			err = s.repo.WriteDriver(driver)
+			err = s.Repo.WriteDriver(driver)
 			if err != nil {
 				fmt.Println(err)
 				s.broker.ErrChan <- fmt.Errorf("write driver failed: %w", err)
@@ -148,7 +153,7 @@ func (s *Service) GetMessages() {
 			}
 			order.ID = uuid
 
-			err = s.repo.WriteOrder(order)
+			err = s.Repo.WriteOrder(order)
 			if err != nil {
 				fmt.Println(err)
 				s.broker.ErrChan <- fmt.Errorf("write order failed: %w", err)
