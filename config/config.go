@@ -24,7 +24,7 @@ type Config struct {
 
 	HS256_SECRET string `mapstructure:"HS256_SECRET"`
 
-	BROKER_HOST string `mapstructure:"BROKER_HOST"`
+	KAFKA_HOST string `mapstructure:"KAFKA_HOST"`
 
 	GRPC_HOST string `mapstructure:"GRPC_HOST"`
 }

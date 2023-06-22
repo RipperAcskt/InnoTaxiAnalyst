@@ -31,9 +31,19 @@ func Run() error {
 		return fmt.Errorf("clickhouse new failed: %w", err)
 	}
 
-	client, err := client.New(cfg)
+	clientUser, err := client.NewClientUser(cfg)
 	if err != nil {
-		return fmt.Errorf("client new failed: %w", err)
+		return fmt.Errorf("client user new failed: %w", err)
+	}
+
+	clientDriver, err := client.NewClientDriver(cfg)
+	if err != nil {
+		return fmt.Errorf("client driver new failed: %w", err)
+	}
+
+	clientOrder, err := client.NewClientOrder(cfg)
+	if err != nil {
+		return fmt.Errorf("client order new failed: %w", err)
 	}
 
 	broker, err := broker.New(cfg)
@@ -46,7 +56,7 @@ func Run() error {
 		log.Error("error: ", zap.Error(err))
 	}()
 
-	service := service.New(repo, client, broker, cfg)
+	service := service.New(repo, clientUser, clientDriver, clientOrder, broker, cfg)
 
 	handler := handler.New(service, cfg, log)
 
