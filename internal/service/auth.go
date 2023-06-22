@@ -22,17 +22,17 @@ type SingIn struct {
 }
 
 func (s *Service) SingIn(ctx context.Context, info *SingIn) (*client.Token, error) {
-	if info.Login != s.cfg.ADMIN_LOGIN || info.Password != s.cfg.ADMIN_PASS {
+	if info.Login != s.Cfg.ADMIN_LOGIN || info.Password != s.Cfg.ADMIN_PASS {
 		return nil, ErrIncorrectLoginOrPassword
 	}
-	return s.clientUser.GetJWT(ctx, uuid.Nil)
+	return s.ClientUser.GetJWT(ctx, uuid.Nil)
 }
 
 func (s *Service) Verify(token string) error {
 	tokenJwt, err := jwt.Parse(
 		token,
 		func(token *jwt.Token) (interface{}, error) {
-			return []byte(s.cfg.HS256_SECRET), nil
+			return []byte(s.Cfg.HS256_SECRET), nil
 		},
 	)
 
@@ -55,7 +55,7 @@ func (s *Service) Verify(token string) error {
 }
 
 func (s *Service) Refresh(ctx context.Context) (*client.Token, error) {
-	token, err := s.clientUser.GetJWT(ctx, uuid.Nil)
+	token, err := s.ClientUser.GetJWT(ctx, uuid.Nil)
 	if err != nil {
 		return nil, fmt.Errorf("get jwt failed: %w", err)
 	}

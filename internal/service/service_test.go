@@ -15,7 +15,7 @@ import (
 )
 
 func TestGetOrderAmount(t *testing.T) {
-	type mockBehavior func(s *mocks.MockGRPCService)
+	type mockBehavior func(s *mocks.MockOrderService)
 	test := []struct {
 		name         string
 		mockBehavior mockBehavior
@@ -23,7 +23,7 @@ func TestGetOrderAmount(t *testing.T) {
 	}{
 		{
 			name: "get order amount",
-			mockBehavior: func(s *mocks.MockGRPCService) {
+			mockBehavior: func(s *mocks.MockOrderService) {
 				s.EXPECT().GetOrdersQuantity(context.Background(), client.AnalysType("day")).Return(5, nil)
 			},
 			err: nil,
@@ -35,12 +35,12 @@ func TestGetOrderAmount(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			grpc := mocks.NewMockGRPCService(ctrl)
+			grpc := mocks.NewMockOrderService(ctrl)
 
 			tt.mockBehavior(grpc)
 
 			service := service.Service{
-				Client: grpc,
+				ClientOrder: grpc,
 			}
 
 			_, err := service.GetOrderAmount(context.Background(), client.AnalysType("day"))
@@ -50,7 +50,7 @@ func TestGetOrderAmount(t *testing.T) {
 }
 
 func TestSetRating(t *testing.T) {
-	type mockBehavior func(repo *mocks.MockRepo, grpc *mocks.MockGRPCService)
+	type mockBehavior func(repo *mocks.MockRepo, clientUser *mocks.MockUserService, clientDriver *mocks.MockDriverService)
 
 	test := []struct {
 		name         string
@@ -65,14 +65,14 @@ func TestSetRating(t *testing.T) {
 				ID:     "123",
 				Rating: 4.2,
 			},
-			mockBehavior: func(repo *mocks.MockRepo, grpc *mocks.MockGRPCService) {
+			mockBehavior: func(repo *mocks.MockRepo, clientUser *mocks.MockUserService, clientDriver *mocks.MockDriverService) {
 				repo.EXPECT().SetRatingUser(context.Background(), model.Rating{
 					Type:   "driver",
 					ID:     "123",
 					Rating: 4.2,
 				}).Return(4.2, nil)
 
-				grpc.EXPECT().SetRating(context.Background(), &proto.Rating{
+				clientUser.EXPECT().SetRating(context.Background(), &proto.Rating{
 					Type: model.DriverType.ToString(),
 					ID:   "123",
 					Mark: 4.2,
@@ -88,13 +88,15 @@ func TestSetRating(t *testing.T) {
 			defer ctrl.Finish()
 
 			repo := mocks.NewMockRepo(ctrl)
-			grpc := mocks.NewMockGRPCService(ctrl)
+			clientUser := mocks.NewMockUserService(ctrl)
+			clientDriver := mocks.NewMockDriverService(ctrl)
 
-			tt.mockBehavior(repo, grpc)
+			tt.mockBehavior(repo, clientUser, clientDriver)
 
 			service := service.Service{
-				Repo:   repo,
-				Client: grpc,
+				Repo:         repo,
+				ClientUser:   clientUser,
+				ClientDriver: clientDriver,
 			}
 
 			err := service.SetRating(context.Background(), tt.rating)
@@ -126,7 +128,11 @@ func TestVerify(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			err := service.Verify(tt.token, cfg)
+			service := service.Service{
+				Cfg: cfg,
+			}
+
+			err := service.Verify(tt.token)
 			assert.IsEqual(err, tt.err)
 		})
 	}
