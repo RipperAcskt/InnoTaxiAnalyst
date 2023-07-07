@@ -37,7 +37,8 @@ func NewClientUser(cfg *config.Config) (*ClientUser, error) {
 	return &ClientUser{
 		clientUser: clientUser,
 		connUser:   connUser,
-		cfg:        cfg}, nil
+
+		cfg: cfg}, nil
 }
 
 func (u *ClientUser) GetJWT(ctx context.Context, id uuid.UUID) (*Token, error) {
@@ -49,6 +50,15 @@ func (u *ClientUser) GetJWT(ctx context.Context, id uuid.UUID) (*Token, error) {
 		return nil, fmt.Errorf("get jwt failed: %w", err)
 	}
 	return &Token{response.AccessToken, response.RefreshToken}, nil
+}
+
+func (u *ClientUser) SetRating(ctx context.Context, rating *proto.Rating) (*proto.Empty, error) {
+	_, err := u.clientUser.SetRating(ctx, rating)
+	if err != nil {
+		return nil, fmt.Errorf("set rating user failed: %w", err)
+	}
+
+	return &proto.Empty{}, nil
 }
 
 func (u *ClientUser) Close() error {

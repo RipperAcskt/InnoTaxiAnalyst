@@ -4,11 +4,14 @@ go 1.20
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.9.1
-	github.com/RipperAcskt/innotaxi v0.0.0-20230510121447-c277544c20f8
+	github.com/RipperAcskt/innotaxi v0.0.0-20230607135234-63ea6ab028e6
+	github.com/go-playground/assert/v2 v2.2.0
 	github.com/gofiber/fiber/v2 v2.45.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.2
+	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
+	github.com/segmentio/kafka-go v0.4.40
 	github.com/spf13/viper v1.15.0
 	go.uber.org/zap v1.24.0
 	google.golang.org/grpc v1.53.0

@@ -37,6 +37,7 @@ func (h *Handler) InitRouters() *fiber.App {
 	analyst.Post("/sing-in", h.SingIn)
 	analyst.Use(h.VerifyToken())
 	analyst.Post("/amount", h.GetOrdersAmount)
+	analyst.Post("/rating", h.GetRating)
 	analyst.Post("/refresh", h.Refresh)
 
 	return router
@@ -61,6 +62,32 @@ func (h *Handler) GetOrdersAmount(ctx *fiber.Ctx) error {
 		Amount int `json:"amount"`
 	}
 	resp.Amount = num
+
+	ctx = ctx.Status(http.StatusOK)
+	return ctx.JSON(resp)
+}
+
+func (h *Handler) GetRating(ctx *fiber.Ctx) error {
+	var ratingType struct {
+		RatingType string `json:"type"`
+	}
+	if err := ctx.BodyParser(&ratingType); err != nil {
+		h.log.Sugar().Errorf("body parser failed: %w", err)
+		ctx = ctx.Status(http.StatusBadRequest)
+		return ctx.SendString(fmt.Sprintf("body parse failed: %v", err))
+	}
+
+	ratings, err := h.service.GetRating(ctx.UserContext(), ratingType.RatingType)
+	if err != nil {
+		h.log.Sugar().Errorf("get rating failed: %w", err)
+		ctx = ctx.Status(http.StatusInternalServerError)
+		return ctx.SendString(fmt.Sprintf("get rating failed: %v", err))
+	}
+
+	var resp struct {
+		Ratings []model.Rating `json:"ratings"`
+	}
+	resp.Ratings = ratings
 
 	ctx = ctx.Status(http.StatusOK)
 	return ctx.JSON(resp)

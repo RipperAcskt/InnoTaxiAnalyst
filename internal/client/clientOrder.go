@@ -39,7 +39,8 @@ func NewClientOrder(cfg *config.Config) (*ClientOrder, error) {
 	return &ClientOrder{
 		clientOrder: clientOrder,
 		connOrder:   connOrder,
-		cfg:         cfg}, nil
+
+		cfg: cfg}, nil
 }
 
 func (u *ClientOrder) GetOrdersQuantity(ctx context.Context, analys AnalysType) (int, error) {
